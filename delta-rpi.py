@@ -329,10 +329,10 @@ def main():
                                 db_cols.append(db_col)
                                 vals.append(value)
                             # don't commit data to the db if we're not generating
-                            if db_col=='dcv1' and value == 0.0:
+                            if (db_col=='dcv1' and value == 0.0) or (db_col=='acv1' and value == 0.0):
                                 commit=False
                                 if DEBUG:
-                                    print("No AC voltage: skipping DB commit")
+                                    print("AC or DC voltage is 0: skipping DB commit")
                         else:
                             print('%-40s %20s %-10s' % (label, value, units))
                     if DB:
