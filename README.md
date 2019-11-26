@@ -44,12 +44,12 @@ See the usage message below:
     usage: delta-rpi.py [-h] [-a ADDRESS] [-d DEVICE] [-b BAUDRATE]
                                       [-t TIMEOUT] [--debug]
                                       MODE
-    
+
     Delta inverter simulator (slave mode) or dataviewer (master mode) for RPI M8A
-    
+
     positional arguments:
       MODE         mode can either be "master" or "slave"
-    
+
     optional arguments:
       -h, --help   show this help message and exit
       -a ADDRESS   slave address [default: 1]
@@ -103,7 +103,7 @@ Run the script in master mode in a second terminal:
 You should now see the slave and master sending/receiving dummy data.
 
 
-#Database creation
+# Database creation
 
 ```
 sudo -u postgres createuser delta-rpi -P
@@ -131,39 +131,55 @@ CREATE TABLE reading(
 	kwh_total	integer,
 	time_total	integer
 );
+CREATE INDEX "date_time_idx" ON reading("date_time");
 
-create index "date_time_idx" on reading("date_time");
-
-# aggregate to 5-minute intervals
-create table five-minute(
-	date     text,
-	time     text,
-	energy   integer,
-	power    smallint,
-	sent     boolean
-)
-#select to_char(max(date_time) at time zone 'utc', 'YYYY-MM-DD') as date, to_char(max(date_time) at time zone 'utc', 'HH24:MI:SS') as time, round(avg(acw1)) as avg_acw1 from reading group by floor(extract(epoch from date_time)/60/5) order by date, time asc;
-#v1	Energy Generation	No1	number	watt hours	10000	r1	
-#v2	Power Generation	No	number	watts	2000	r1	
-	select to_char(max(date_time), 'YYYY-MM-DD') as date, to_char(max(date_time), 'HH24:MI:SS') as time, max(wh_today) as energy, round(avg(acw1)) as power, round(cast(avg(acv1) as numeric),1) as voltage from reading group by floor(extract(epoch from date_time)/60/5) order by date, time asc;
-	select to_char(max(date_time), 'YYYY-MM-DD') as date, to_char(max(date_time), 'HH24:MI:SS') as time, max(wh_today) as energy, round(avg(acw1)) as power, round(cast(avg(acv1) as numeric),1) as voltage from reading group by floor(extract(epoch from date_time)/60/5) order by date, time asc;
-
-create table five_minute(
-	max_time	timestamp with time zone,
-	energy   integer,
-	power    smallint,
-	voltage  real,
-	sent     boolean
+CREATE TABLE five_minute (
+    max_time timestamp with time zone,
+    energy integer,
+    power smallint,
+    voltage real,
+    sent boolean
 );
+```
 
--- aggregate the high-resolution data into 5-minute time slices.  Don't overwrite existing slices in the database.
-insert into five_minute select max(date_time) as max_time, max(wh_today) as energy, round(avg(acw1)) as power, round(cast(avg(acv1) as numeric),1) as voltage, false from reading where date_time::date=current_date group by floor(extract(epoch from date_time)/60/5) having max(date_time) not in (select max_time from five_minute);
--- the last slice won't be a complete 5-minute slice, so delete it
-DELETE FROM five_minute
-WHERE max_time IN (
-    SELECT max_time
-    FROM five_minute
-    ORDER BY max_time desc
-    LIMIT 1
-);
+# Running logging script from systemd
+
+Create a local user unit:
+```
+mkdir -p ~/.config/systemd/user/
+vim ~/.config/systemd/user/delta-rpi.service
+```
+
+Update WorkingDirectory and ExecStart to point to the location where you have checked out the code:
+
+```
+[Unit]
+Description=Delta RPI Inverter monitor
+After=network.target
+
+[Service]
+Type=simple
+User=rwh
+WorkingDirectory=/home/rwh/wd/delta-rpi
+ExecStart=/home/rwh/wd/delta-rpi/delta-rpi.py -d /dev/ttyUSB0 -b 19200 -a 1 master --db
+Restart=on-failure
+
+# The install section is needed to use `systemctl enable` to start on boot For
+# a user service that you want to enable and start automatically, use
+# `default.target` For system level services, use `multi-user.target`
+[Install]
+WantedBy=default.target
+```
+
+Enable the unit:
+```
+sudo systemctl --user enable delta-rpi
+```
+
+# Sending output to pvoutput.org
+
+Add the send-to-pvoutput.py to your crontab to send data every 5 minutes during the day (6:00 am to 9:00 pm):
+```
+crontab -e
+*/5 6-21 * * * $HOME/wd/delta-rpi-rwh/send-to-pvoutput.py
 ```
