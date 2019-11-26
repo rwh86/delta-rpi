@@ -181,5 +181,5 @@ sudo systemctl --user enable delta-rpi
 Add the send-to-pvoutput.py to your crontab to send data every 5 minutes during the day (6:00 am to 9:00 pm):
 ```
 crontab -e
-*/5 6-21 * * * $HOME/wd/delta-rpi-rwh/send-to-pvoutput.py
+*/5 6-21 * * * $HOME/wd/delta-rpi/send-to-pvoutput.py
 ```
