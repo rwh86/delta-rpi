@@ -142,7 +142,9 @@ CREATE TABLE five_minute (
 );
 ```
 
-# Running logging script from systemd
+# Running the inverter logging script from systemd
+
+This allows the script to be started up automatically in case of a reboot.
 
 Create a local user unit:
 ```
@@ -150,8 +152,7 @@ mkdir -p ~/.config/systemd/user/
 vim ~/.config/systemd/user/delta-rpi.service
 ```
 
-Update WorkingDirectory and ExecStart to point to the location where you have checked out the code:
-
+Make sure you update WorkingDirectory and ExecStart to point to the location where you have checked out the code:
 ```
 [Unit]
 Description=Delta RPI Inverter monitor
@@ -159,21 +160,23 @@ After=network.target
 
 [Service]
 Type=simple
-User=rwh
 WorkingDirectory=/home/rwh/wd/delta-rpi
 ExecStart=/home/rwh/wd/delta-rpi/delta-rpi.py -d /dev/ttyUSB0 -b 19200 -a 1 master --db
 Restart=on-failure
 
-# The install section is needed to use `systemctl enable` to start on boot For
-# a user service that you want to enable and start automatically, use
-# `default.target` For system level services, use `multi-user.target`
 [Install]
 WantedBy=default.target
 ```
 
-Enable the unit:
+Allow commands to run without the local user being logged in, enable the unit, and start it:
 ```
-sudo systemctl --user enable delta-rpi
+sudo loginctl enable-linger $USER
+systemctl --user enable delta-rpi
+systemctl --user start delta-rpi
+```
+You can see any output with:
+```
+journalctl --user -u delta-rpi
 ```
 
 # Sending output to pvoutput.org
