@@ -13,6 +13,7 @@ from pprint import pprint
 import psycopg2
 import pytz
 from datetime import datetime
+import config # see config.py
 
 import crc16
 
@@ -288,7 +289,7 @@ def main():
     DB = args.db
 
     if DB:
-        db_conn = psycopg2.connect("dbname=delta-rpi user=delta-rpi password=fXEAXq94uKeLi6 host=localhost")
+        db_conn = psycopg2.connect(f"dbname={config.db['dbname']} user={config.db['user']} password={config.db['password']} host={config.db['host']}")
         cur = db_conn.cursor()
 
     conn = serial.Serial(args.d, args.b, timeout=args.t);

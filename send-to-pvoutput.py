@@ -2,6 +2,7 @@
 
 import psycopg2
 import requests
+import config # see config.py
 
 #-- aggregate the high-resolution data into 5-minute time slices.  Don't overwrite existing slices in the database.
 #insert into five_minute select max(date_time) as max_time, max(wh_today) as energy, round(avg(acw1)) as power, round(cast(avg(acv1) as numeric),1) as voltage, false from reading where date_time::date=current_date group by floor(extract(epoch from date_time)/60/5) having max(date_time) not in (select max_time from five_minute);
@@ -14,8 +15,9 @@ import requests
 #    LIMIT 1
 #);
 
-headers={'X-Pvoutput-Apikey':'841804e44aad0ef2646be8afcf56ca534d3aa417','X-Pvoutput-SystemId':'71038'}
-db_conn = psycopg2.connect("dbname=delta-rpi user=delta-rpi password=fXEAXq94uKeLi6 host=localhost")
+headers={"X-Pvoutput-Apikey":config.pvoutput["apikey"],"X-Pvoutput-SystemId":config.pvoutput["systemid"]}
+db_conn = psycopg2.connect(f"dbname={config.db['dbname']} user={config.db['user']} password={config.db['password']} host={config.db['host']}")
+
 cur = db_conn.cursor()
 # aggregate the high-resolution data into 5-minute time slices.  Don't overwrite existing slices in the database.
 # Note that this only works with data from today to improve performance.  If
