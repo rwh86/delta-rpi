@@ -23,7 +23,7 @@ cur = db_conn.cursor()
 # Note that this only works with data from today to improve performance.  If
 # you need to catch up, replace current_date with the day you want to generate,
 # e.g. '2019-11-09' or remove that where clause
-sql = "insert into five_minute select max(date_time) as max_time, max(wh_today) as energy, round(avg(acw1)) as power, round(cast(avg(acv1) as numeric),1) as voltage, false from reading where date_time::date=current_date group by floor(extract(epoch from date_time)/60/5) having max(date_time) not in (select max_time from five_minute);"
+sql = "insert into five_minute select max(date_time) as max_time, max(wh_today) as energy, round(avg(acw1)) as power, round(cast(avg(acv1) as numeric),1) as voltage, false from reading where date_time::date=current_date group by floor(extract(epoch from date_time)/60/5) having round(avg(acw1))!=0 and max(date_time) not in (select max_time from five_minute);"
 cur.execute(sql)
 db_conn.commit()
 
